@@ -13,6 +13,9 @@ import adafruit_dotstar as dotstar
 from digitalio import DigitalInOut, Direction, Pull
 from adafruit_pm25.i2c import PM25_I2C
 from Adafruit_IO import MQTTClient
+from adafruit_ht16k33.segments import BigSeg7x4
+
+
 
 numLEDs = 144
 dots = dotstar.DotStar(board.SCK, board.MOSI, numLEDs, brightness=0.05)
@@ -77,6 +80,17 @@ client.connect()
 
 # Create library object, use 'slow' 100KHz frequency!
 i2c = busio.I2C(board.SCL, board.SDA, frequency=100000)
+time.sleep(1)  # wait to avoid I/O error by letting i2c settle
+
+#7 segment display test
+display = BigSeg7x4(i2c)
+display.fill(0)
+display.print("C02")
+time.sleep(1)
+display.fill(0)
+
+
+
 # Connect to PM2.5 sensor over I2C
 pm25 = PM25_I2C(i2c, reset_pin)
 print("Found PM2.5 sensor, reading data...")
@@ -148,6 +162,10 @@ while True:
         dots.fill((0, 0, 0))
         for dot in range(CO2LEDs):
             dots[dot] = (0, 200, 200)
+        #display CO2 on 7 segment display
+        CO2seg = min(int(scd.CO2), 9999)
+        display.fill(0)
+        display.print(CO2seg)
     client.publish('PM25', aqdata["pm25 standard"])
     client.publish('Temperature', scd.temperature)
     client.publish('Humidity', scd.relative_humidity)
