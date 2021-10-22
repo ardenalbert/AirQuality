@@ -1,8 +1,6 @@
 #! /usr/bin/env python3
-# Example of using the MQTT client class to subscribe to and publish feed values.
-# Author: Tony DiCola
+# MQTT example code author: Tony DiCola
 
-# Import standard python modules.
 import random
 import sys
 import time
@@ -16,26 +14,62 @@ from Adafruit_IO import MQTTClient
 from adafruit_ht16k33.segments import BigSeg7x4
 
 
-
+#initialize Dotstar strip
 numLEDs = 144
 dots = dotstar.DotStar(board.SCK, board.MOSI, numLEDs, brightness=0.05)
 
-#startup LED animation (replace with modified rainbow slice)
-dots.fill((247, 2, 64))
-time.sleep(1.0)
-dots.fill((0, 0, 0))
+#startup LED animation
+def slice_color(wait):
+    dots[::6] = [COLOR1] * (numLEDs // 6)
+    dots.show()
+    time.sleep(wait)
+    dots[1::6] = [COLOR2] * (numLEDs // 6)
+    dots.show()
+    time.sleep(wait)
+    dots[2::6] = [COLOR3] * (numLEDs // 6)
+    dots.show()
+    time.sleep(wait)
+    dots[3::6] = [COLOR4] * (numLEDs // 6)
+    dots.show()
+    time.sleep(wait)
+    dots[4::6] = [COLOR5] * (numLEDs // 6)
+    dots.show()
+    time.sleep(wait)
+    dots[5::6] = [COLOR6] * (numLEDs // 6)
+    dots.show()
+    time.sleep(wait)
+    dots[5::6] = [BLACK] * (numLEDs // 6)
+    dots.show()
+    time.sleep(wait)
+    dots[4::6] = [BLACK] * (numLEDs // 6)
+    dots.show()
+    time.sleep(wait)
+    dots[3::6] = [BLACK] * (numLEDs //6)
+    dots.show()
+    time.sleep(wait)
+    dots[2::6] = [BLACK] * (numLEDs // 6)
+    dots.show()
+    time.sleep(wait)
+    dots[1::6] = [BLACK] * (numLEDs //6)
+    dots.show()
+    time.sleep(wait)
+    dots[::6] = [BLACK] * (numLEDs //6)
+    dots.show()
+    time.sleep(wait)
 
-#n_dots = 25
-#while True:
-    #fill each dot with a color
-#    for dot in range(n_dots):
-#        dots[dot] = (0, 255, 255)
-#    time.sleep(1.0)
+COLOR1 = (9, 0, 103)
+COLOR2 = (0, 29, 135)
+COLOR3 = (0, 99, 148)
+COLOR4 = (0, 159, 182)
+COLOR5 = (0, 212, 207)
+COLOR6 = (0, 240, 240)
+BLACK = (0, 0, 0)
 
 
-# Set Adafruit IO key and username.
-# Remember, your key is a secret,
-# so make sure not to publish it when you publish this code!
+slice_color(0.05)
+
+
+# Set Adafruit IO key and username. DO NOT PUBLISH
 ADAFRUIT_IO_KEY = 'f6ae06ffa71542e7819045fc5e2ea08f'
 ADAFRUIT_IO_USERNAME = 'aalbert'
 
@@ -86,7 +120,7 @@ time.sleep(1)  # wait to avoid I/O error by letting i2c settle
 display = BigSeg7x4(i2c)
 display.fill(0)
 display.print("C02")
-time.sleep(1)
+time.sleep(3)
 display.fill(0)
 
 
@@ -104,15 +138,6 @@ scd = adafruit_scd30.SCD30(i2c)
 # doing things in your program.
 #client.loop_background()
 # Now send new values every 10 seconds.
-""" print('Publishing a new message every 10 seconds (press Ctrl-C to quit)...')
-while True:
-    value = random.randint(0, 100)
-    print('Publishing {0} to DemoFeed.'.format(value))
-    client.publish('DemoFeed', value)
-    time.sleep(10) """
-
-
-
 
 while True:
     time.sleep(10)
