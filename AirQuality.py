@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+
 # MQTT example code author: Tony DiCola
 
 import random
@@ -17,6 +18,7 @@ from adafruit_ht16k33.segments import BigSeg7x4
 #initialize Dotstar strip
 numLEDs = 144
 dots = dotstar.DotStar(board.SCK, board.MOSI, numLEDs, brightness=0.05)
+
 
 #startup LED animation
 def slice_color(wait):
@@ -80,13 +82,13 @@ def connected(client):
     # This is a good place to subscribe to feed changes.  The client parameter
     # passed to this function is the Adafruit IO MQTT client so you can make
     # calls against it easily.
-    print('Connected to Adafruit IO!  Listening for DemoFeed changes...')
+    print('Connected to Adafruit IO.  Listening for DemoFeed changes...')
     # Subscribe to changes on a feed named DemoFeed.
     client.subscribe('DemoFeed')
 
 def disconnected(client):
     # Disconnected function will be called when the client disconnects.
-    print('Disconnected from Adafruit IO!')
+    print('Disconnected from Adafruit IO.')
     sys.exit(1)
 
 def message(client, feed_id, payload):
