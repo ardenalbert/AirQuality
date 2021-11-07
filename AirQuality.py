@@ -1,24 +1,62 @@
 #! /usr/bin/env python3
 
-# MQTT example code author: Tony DiCola
+# Google Docs example code author: Tony DiCola
 
 import random
 import sys
 import time
+import datetime
 import board
 import busio
 import adafruit_scd30
 import adafruit_dotstar as dotstar
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 from digitalio import DigitalInOut, Direction, Pull
 from adafruit_pm25.i2c import PM25_I2C
-from Adafruit_IO import MQTTClient
 from adafruit_ht16k33.segments import BigSeg7x4
+
+LOCATION = 'KITCHEN'
+
+#google docs spreadsheet name and oauth json file (place oauth file in same directory as this python script)
+GDOCS_OAUTH_JSON = 'diy-ai-169402-7d9989ca811a.json'
+GDOCS_SPREADSHEET_NAME = 'AirQuality1'
+
+FREQUENCY_SECONDS = 60
+
+#led strip colors
+COLOR1 = (9, 0, 103)
+COLOR2 = (0, 29, 135)
+COLOR3 = (0, 99, 148)
+COLOR4 = (0, 159, 182)
+COLOR5 = (0, 212, 207)
+COLOR6 = (0, 240, 240)
+BLACK = (0, 0, 0)
+
+reset_pin = None
+# If you have a GPIO, its not a bad idea to connect it to the RESET pin
+# reset_pin = DigitalInOut(board.G0)
+# reset_pin.direction = Direction.OUTPUT
+# reset_pin.value = False
 
 
 #initialize Dotstar strip
 numLEDs = 144
 dots = dotstar.DotStar(board.SCK, board.MOSI, numLEDs, brightness=0.05)
 
+def login_open_sheet(oauth_key_file, spreadsheet):
+    """Connect to Google Docs spreadsheet and return the first worksheet."""
+    try:
+        scope =  ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(oauth_key_file, scope)
+        gc = gspread.authorize(credentials)
+        worksheet = gc.open(spreadsheet).sheet1 # pylint: disable=redefined-outer-name
+        return worksheet
+    except Exception as ex: # pylint: disable=bare-except, broad-except
+        print('Unable to login and get spreadsheet.  Check OAuth credentials, spreadsheet name, \
+        and make sure spreadsheet is shared to the client_email address in the OAuth .json file!')
+        print('Google sheet login failed with error:', ex)
+        sys.exit(1)
 
 #startup LED animation
 def slice_color(wait):
@@ -59,96 +97,40 @@ def slice_color(wait):
     dots.show()
     time.sleep(wait)
 
-COLOR1 = (9, 0, 103)
-COLOR2 = (0, 29, 135)
-COLOR3 = (0, 99, 148)
-COLOR4 = (0, 159, 182)
-COLOR5 = (0, 212, 207)
-COLOR6 = (0, 240, 240)
-BLACK = (0, 0, 0)
 
 
-slice_color(0.05)
-
-
-# Set Adafruit IO key and username. DO NOT PUBLISH
-ADAFRUIT_IO_KEY = 'f6ae06ffa71542e7819045fc5e2ea08f'
-ADAFRUIT_IO_USERNAME = 'aalbert'
-
-
-# Define callback functions which will be called when certain events happen.
-def connected(client):
-    # Connected function will be called when the client is connected to Adafruit IO.
-    # This is a good place to subscribe to feed changes.  The client parameter
-    # passed to this function is the Adafruit IO MQTT client so you can make
-    # calls against it easily.
-    print('Connected to Adafruit IO.  Listening for DemoFeed changes...')
-    # Subscribe to changes on a feed named DemoFeed.
-    client.subscribe('DemoFeed')
-
-def disconnected(client):
-    # Disconnected function will be called when the client disconnects.
-    print('Disconnected from Adafruit IO.')
-    sys.exit(1)
-
-def message(client, feed_id, payload):
-    # Message function will be called when a subscribed feed has a new value.
-    # The feed_id parameter identifies the feed, and the payload parameter has
-    # the new value.
-    print('Feed {0} received new value: {1}'.format(feed_id, payload))
-
-reset_pin = None
-# If you have a GPIO, its not a bad idea to connect it to the RESET pin
-# reset_pin = DigitalInOut(board.G0)
-# reset_pin.direction = Direction.OUTPUT
-# reset_pin.value = False
-
-# Create an MQTT client instance.
-client = MQTTClient(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
-
-# Setup the callback functions defined above.
-client.on_connect    = connected
-client.on_disconnect = disconnected
-client.on_message    = message
-
-# Connect to the Adafruit IO server.
-client.connect()
-
-# Create library object, use 'slow' 100KHz frequency!
+# I2C - Create library object, use 'slow' 100KHz frequency!
 i2c = busio.I2C(board.SCL, board.SDA, frequency=100000)
-time.sleep(1)  # wait to avoid I/O error by letting i2c settle
+time.sleep(1)  # let i2c settle to avoid I/O error
 
 #7 segment display test
 display = BigSeg7x4(i2c)
 display.fill(0)
-display.print("C02")
+display.print("8888")
 time.sleep(3)
 display.fill(0)
 
-
-
-# Connect to PM2.5 sensor over I2C
+# Connect to PM2.5 and SCD30 sensors over I2C
 pm25 = PM25_I2C(i2c, reset_pin)
-print("Found PM2.5 sensor, reading data...")
-scd = adafruit_scd30.SCD30(i2c)
+print("Found PM2.5 sensor")
+scd = adafruit_scd30.SCD30(i2c)  #to do: Look into reset pin
+print("Found SCD30 sensor")
 
-# Now the program needs to use a client loop function to ensure messages are
-# sent and received.  There are a few options for driving the message loop,
-# depending on what your program needs to do.
-
-# The first option is to run a thread in the background so you can continue
-# doing things in your program.
-#client.loop_background()
-# Now send new values every 10 seconds.
-
+#main - To do: look into using background processes for sending data etc
+slice_color(0.05)
+time.sleep(10)
+print('Logging sensor measurements to\ {0} every {1} seconds.'.format(GDOCS_SPREADSHEET_NAME, FREQUENCY_SECONDS))
+print('Press Ctrl-C to quit.')
+worksheet = None
 while True:
-    time.sleep(10)
-
+    #login if necessary
+    if worksheet is None:
+        worksheet = login_open_sheet(GDOCS_OAUTH_JSON, GDOCS_SPREADSHEET_NAME)
     try:
         aqdata = pm25.read()
         # print(aqdata)
     except RuntimeError:
-        print("Unable to read from sensor, retrying...")
+        print("Unable to read from PM2.5 sensor, retrying...")
         continue
 
     print()
@@ -174,7 +156,7 @@ while True:
     print("---------------------------------------")
     
     if scd.data_available:
-        print("Data Available!")
+        print("SCD30 Data Available")
         print("CO2: %d PPM" % scd.CO2)
         print("Temperature: %0.2f degrees C" % scd.temperature)
         print("Humidity: %0.2f %% rH" % scd.relative_humidity)
@@ -193,37 +175,25 @@ while True:
         CO2seg = min(int(scd.CO2), 9999)
         display.fill(0)
         display.print(CO2seg)
-    client.publish('PM25', aqdata["pm25 standard"])
-    client.publish('Temperature', scd.temperature)
-    client.publish('Humidity', scd.relative_humidity)
-    client.publish('CO2', scd.CO2)
-
+    #append the data in the spreadsheet, including a timestamp
+    '''test append with temp values
+    tempco2 = 5.5
+    temppm25 = 10.1
+    temptemp = 24.6
+    temphumidity = 88.32'''
+    try:
+        worksheet.append_row((datetime.datetime.now().isoformat(), LOCATION, scd.CO2, aqdata["pm25 standard"], scd.temperature, scd.relative_humidity))
+    except: # pylint: disable=bare-except, broad-except
+        #Error appending data, most likely because credentials are stale.
+        #Null out the worksheet so a login is performed at the top of the loop.
+        print('Append error, logging in again')
+        worksheet = None
+        time.sleep(FREQUENCY_SECONDS)
+        continue
+    #Wait before continuing
+    print('Wrote a row to {0}'.format(GDOCS_SPREADSHEET_NAME))
+    time.sleep(FREQUENCY_SECONDS)
+    #To Do: create a variable for each measurement with desired precision that all processes can use (CO2, Temp, Humidity, etc instead of using scd.* everywhere)
 
 
 client.loop_blocking()
-
-
-
-# Another option is to pump the message loop yourself by periodically calling
-# the client loop function.  Notice how the loop below changes to call loop
-# continuously while still sending a new message every 10 seconds.  This is a
-# good option if you don't want to or can't have a thread pumping the message
-# loop in the background.
-#last = 0
-#print('Publishing a new message every 10 seconds (press Ctrl-C to quit)...')
-#while True:
-#   # Explicitly pump the message loop.
-#   client.loop()
-#   # Send a new message every 10 seconds.
-#   if (time.time() - last) >= 10.0:
-#       value = random.randint(0, 100)
-#       print('Publishing {0} to DemoFeed.'.format(value))
-#       client.publish('DemoFeed', value)
-#       last = time.time()
-
-# The last option is to just call loop_blocking.  This will run a message loop
-# forever, so your program will not get past the loop_blocking call.  This is
-# good for simple programs which only listen to events.  For more complex programs
-# you probably need to have a background thread loop or explicit message loop like
-# the two previous examples above.
-#client.loop_blocking()
