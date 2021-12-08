@@ -11,15 +11,16 @@ import busio
 import adafruit_scd30
 import adafruit_dotstar as dotstar
 import gspread
+import digitalio
 from oauth2client.service_account import ServiceAccountCredentials
-from digitalio import DigitalInOut, Direction, Pull
+#from digitalio import DigitalInOut, Direction, Pull
 from adafruit_pm25.i2c import PM25_I2C
 from adafruit_ht16k33.segments import BigSeg7x4
 
-LOCATION = 'KITCHEN'
+LOCATION = 'NONE'
 
 #google docs spreadsheet name and oauth json file (place oauth file in same directory as this python script)
-GDOCS_OAUTH_JSON = 'diy-ai-169402-7d9989ca811a.json'
+GDOCS_OAUTH_JSON = '/home/pi/diy-ai-169402-7d9989ca811a.json'
 GDOCS_SPREADSHEET_NAME = 'AirQuality1'
 
 FREQUENCY_SECONDS = 60
@@ -41,8 +42,10 @@ reset_pin = None
 
 
 #initialize Dotstar strip
-numLEDs = 144
+numLEDs = 24
 dots = dotstar.DotStar(board.SCK, board.MOSI, numLEDs, brightness=0.05)
+CO2ledMin = 400
+CO2ledMax = 1600
 
 def login_open_sheet(oauth_key_file, spreadsheet):
     """Connect to Google Docs spreadsheet and return the first worksheet."""
@@ -57,6 +60,28 @@ def login_open_sheet(oauth_key_file, spreadsheet):
         and make sure spreadsheet is shared to the client_email address in the OAuth .json file!')
         print('Google sheet login failed with error:', ex)
         sys.exit(1)
+
+#initialize display select switch inputs
+swDisplayCO2 = digitalio.DigitalInOut(board.D5)
+swDisplayCO2.direction = digitalio.Direction.INPUT
+swDisplayPM25 = digitalio.DigitalInOut(board.D6)
+swDisplayPM25.direction = digitalio.Direction.INPUT
+swDisplayOFF = digitalio.DigitalInOut(board.D7)
+swDisplayOFF.direction = digitalio.Direction.INPUT
+
+#initialize room select switch inputs
+swRoomKITCHEN = digitalio.DigitalInOut(board.D12)
+swRoomKITCHEN.direction = digitalio.Direction.INPUT
+swRoomOFFICE = digitalio.DigitalInOut(board.D13)
+swRoomOFFICE.direction = digitalio.Direction.INPUT
+swRoomBEDROOM1 = digitalio.DigitalInOut(board.D14)
+swRoomBEDROOM1.direction = digitalio.Direction.INPUT
+swRoomBEDROOM2 = digitalio.DigitalInOut(board.D15)
+swRoomBEDROOM2.direction = digitalio.Direction.INPUT
+swRoomBEDROOM3 = digitalio.DigitalInOut(board.D16)
+swRoomBEDROOM3.direction = digitalio.Direction.INPUT
+swRoomOUTSIDE = digitalio.DigitalInOut(board.D17)
+swRoomOUTSIDE.direction = digitalio.Direction.INPUT
 
 #startup LED animation
 def slice_color(wait):
@@ -154,33 +179,36 @@ while True:
     print("Particles > 5.0um / 0.1L air:", aqdata["particles 50um"])
     print("Particles > 10 um / 0.1L air:", aqdata["particles 100um"])
     print("---------------------------------------")
-    
+
     if scd.data_available:
         print("SCD30 Data Available")
         print("CO2: %d PPM" % scd.CO2)
         print("Temperature: %0.2f degrees C" % scd.temperature)
         print("Humidity: %0.2f %% rH" % scd.relative_humidity)
         print("")
-        print("Waiting for new data...")
-        print("")
         #display CO2 on LED bar (replace  max scaling with a variable)
         #make this a function call
         #calculate number of LEDs to light up for CO2 and ensure it isn't larger than numLEDs
-        CO2LEDs = min(numLEDs, int(scd.CO2 * numLEDs / 2000))
+        CO2LEDs = min(numLEDs, int((scd.CO2 - CO2ledMin) * numLEDs / (CO2ledMax - CO2ledMin)))
         print("dots to display: %d " % CO2LEDs)
         dots.fill((0, 0, 0))
         for dot in range(CO2LEDs):
             dots[dot] = (0, 200, 200)
-        #display CO2 on 7 segment display
-        CO2seg = min(int(scd.CO2), 9999)
+    #display selected measurement on 7 segment display
+    display.fill(0)
+    if not(swDisplayCO2.value):  #check if CO2 is selected
+        print("Display Mode = CO2")
+        display.print(min(int(scd.CO2), 9999))   #ensure value to display can't be more than the maximum value the 7 segment LED can display
+    elif not(swDisplayPM25.value):   #check if PM2.5 is selected
+        print("Display Mode = PM2.5")
+        display.print(min(int(aqdata["pm25 standard"]), 9999))
+    elif not(swDisplayOFF.value):   #check if OFF is selected
+        print("Display Mode = OFF")
         display.fill(0)
-        display.print(CO2seg)
+    else:
+        print("Display Mode = ERROR")
+        display.print("ERR")
     #append the data in the spreadsheet, including a timestamp
-    '''test append with temp values
-    tempco2 = 5.5
-    temppm25 = 10.1
-    temptemp = 24.6
-    temphumidity = 88.32'''
     try:
         worksheet.append_row((datetime.datetime.now().isoformat(), LOCATION, scd.CO2, aqdata["pm25 standard"], scd.temperature, scd.relative_humidity))
     except: # pylint: disable=bare-except, broad-except
