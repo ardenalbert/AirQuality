@@ -9,7 +9,7 @@ import datetime
 import board
 import busio
 import adafruit_scd30
-import adafruit_dotstar as dotstar
+import adafruit_dotstar
 import gspread
 import digitalio
 from oauth2client.service_account import ServiceAccountCredentials
@@ -42,10 +42,35 @@ reset_pin = None
 
 
 #initialize Dotstar strip
-numLEDs = 24
-dots = dotstar.DotStar(board.SCK, board.MOSI, numLEDs, brightness=0.05)
+num_pixels = 24
+pixels = adafruit_dotstar.DotStar(board.SCK, board.MOSI, num_pixels, brightness=0.1, auto_write=False)
+CO2_normal_color = (10, 240, 240)
+CO2_warn_color = (230, 150, 0)
+CO2_high_color = (255, 0, 0)
+black = (0, 0, 0)
 CO2ledMin = 400
 CO2ledMax = 1600
+#blank any LEDs that may be still on
+pixels.fill(black)
+pixels.show()
+
+def CO2_gauge(CO2):
+    #determine the color of the LEDS based on the CO2 concentration
+    if CO2  < 800:
+        CO2_color = CO2_normal_color
+    elif CO2 < 1000:
+        CO2_color = CO2_warn_color
+    else:
+        CO2_color = CO2_high_color
+    #calculate the number of LEDs to show based on the CO2 concentration
+    CO2_leds = min(num_pixels, int((CO2 - CO2ledMin) * num_pixels / (CO2ledMax - CO2ledMin)))
+    for i in range(num_pixels):
+        if i < CO2_leds:
+            pixels[i] = CO2_color
+        else:
+            pixels[i] = black
+    pixels.show()
+    print("Dots to display: %d" % CO2_leds)
 
 def login_open_sheet(oauth_key_file, spreadsheet):
     """Connect to Google Docs spreadsheet and return the first worksheet."""
@@ -83,47 +108,6 @@ swRoomBEDROOM3.direction = digitalio.Direction.INPUT
 swRoomOUTSIDE = digitalio.DigitalInOut(board.D17)
 swRoomOUTSIDE.direction = digitalio.Direction.INPUT
 
-#startup LED animation
-def slice_color(wait):
-    dots[::6] = [COLOR1] * (numLEDs // 6)
-    dots.show()
-    time.sleep(wait)
-    dots[1::6] = [COLOR2] * (numLEDs // 6)
-    dots.show()
-    time.sleep(wait)
-    dots[2::6] = [COLOR3] * (numLEDs // 6)
-    dots.show()
-    time.sleep(wait)
-    dots[3::6] = [COLOR4] * (numLEDs // 6)
-    dots.show()
-    time.sleep(wait)
-    dots[4::6] = [COLOR5] * (numLEDs // 6)
-    dots.show()
-    time.sleep(wait)
-    dots[5::6] = [COLOR6] * (numLEDs // 6)
-    dots.show()
-    time.sleep(wait)
-    dots[5::6] = [BLACK] * (numLEDs // 6)
-    dots.show()
-    time.sleep(wait)
-    dots[4::6] = [BLACK] * (numLEDs // 6)
-    dots.show()
-    time.sleep(wait)
-    dots[3::6] = [BLACK] * (numLEDs //6)
-    dots.show()
-    time.sleep(wait)
-    dots[2::6] = [BLACK] * (numLEDs // 6)
-    dots.show()
-    time.sleep(wait)
-    dots[1::6] = [BLACK] * (numLEDs //6)
-    dots.show()
-    time.sleep(wait)
-    dots[::6] = [BLACK] * (numLEDs //6)
-    dots.show()
-    time.sleep(wait)
-
-
-
 # I2C - Create library object, use 'slow' 100KHz frequency!
 i2c = busio.I2C(board.SCL, board.SDA, frequency=100000)
 time.sleep(1)  # let i2c settle to avoid I/O error
@@ -142,8 +126,7 @@ scd = adafruit_scd30.SCD30(i2c)  #to do: Look into reset pin
 print("Found SCD30 sensor")
 
 #main - To do: look into using background processes for sending data etc
-slice_color(0.05)
-time.sleep(10)
+#time.sleep(10)
 print('Logging sensor measurements to\ {0} every {1} seconds.'.format(GDOCS_SPREADSHEET_NAME, FREQUENCY_SECONDS))
 print('Press Ctrl-C to quit.')
 worksheet = None
@@ -186,14 +169,9 @@ while True:
         print("Temperature: %0.2f degrees C" % scd.temperature)
         print("Humidity: %0.2f %% rH" % scd.relative_humidity)
         print("")
-        #display CO2 on LED bar (replace  max scaling with a variable)
-        #make this a function call
-        #calculate number of LEDs to light up for CO2 and ensure it isn't larger than numLEDs
-        CO2LEDs = min(numLEDs, int((scd.CO2 - CO2ledMin) * numLEDs / (CO2ledMax - CO2ledMin)))
-        print("dots to display: %d " % CO2LEDs)
-        dots.fill((0, 0, 0))
-        for dot in range(CO2LEDs):
-            dots[dot] = (0, 200, 200)
+        #display CO2 on LED strip
+        CO2_gauge(scd.CO2)
+
     #display selected measurement on 7 segment display
     display.fill(0)
     if not(swDisplayCO2.value):  #check if CO2 is selected

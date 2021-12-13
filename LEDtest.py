@@ -1,12 +1,11 @@
 #! /usr/bin/env python3
 
 import time
-from rainbowio import colorwheel
 import adafruit_dotstar
 import board
 
 num_pixels = 24
-pixels = adafruit_dotstar.DotStar(board.SCK, board.MOSI, num_pixels, brightness=0.1, auto_write=False)
+pixels = adafruit_dotstar.DotStar(board.SCK, board.MOSI, num_pixels, brightness=0.2, auto_write=False)
 co2_normal_color = (10, 240, 240)
 co2_warn_color = (230, 150, 0)
 co2_high_color = (255, 0, 0)
@@ -37,4 +36,4 @@ pixels.fill(black)
 pixels.show()
 time.sleep(1.0)
 
-co2_gauge(1500)
+co2_gauge(500)
