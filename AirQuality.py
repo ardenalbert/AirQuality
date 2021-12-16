@@ -13,7 +13,6 @@ import adafruit_dotstar
 import gspread
 import digitalio
 from oauth2client.service_account import ServiceAccountCredentials
-#from digitalio import DigitalInOut, Direction, Pull
 from adafruit_pm25.i2c import PM25_I2C
 from adafruit_ht16k33.segments import BigSeg7x4
 
@@ -25,21 +24,11 @@ GDOCS_SPREADSHEET_NAME = 'AirQuality1'
 
 FREQUENCY_SECONDS = 60
 
-#led strip colors
-COLOR1 = (9, 0, 103)
-COLOR2 = (0, 29, 135)
-COLOR3 = (0, 99, 148)
-COLOR4 = (0, 159, 182)
-COLOR5 = (0, 212, 207)
-COLOR6 = (0, 240, 240)
-BLACK = (0, 0, 0)
-
 reset_pin = None
 # If you have a GPIO, its not a bad idea to connect it to the RESET pin
 # reset_pin = DigitalInOut(board.G0)
 # reset_pin.direction = Direction.OUTPUT
 # reset_pin.value = False
-
 
 #initialize Dotstar strip
 num_pixels = 24
@@ -58,7 +47,7 @@ def CO2_gauge(CO2):
     #determine the color of the LEDS based on the CO2 concentration
     if CO2  < 800:
         CO2_color = CO2_normal_color
-    elif CO2 < 1000:
+    elif CO2 < 1200:
         CO2_color = CO2_warn_color
     else:
         CO2_color = CO2_high_color
@@ -186,6 +175,30 @@ while True:
     else:
         print("Display Mode = ERROR")
         display.print("ERR")
+
+    #get room selection from switch
+    if not(swRoomKITCHEN.value):
+        print("Room = Kitchen")
+        LOCATION = "KITCHEN"
+    elif not(swRoomOFFICE.value):
+        print("Room = Office")
+        LOCATION = "OFFICE"
+    elif not(swRoomBEDROOM1.value):
+        print("Room = Bedroom 1")
+        LOCATION = "BEDROOM1"
+    elif not(swRoomBEDROOM2.value):
+        print("Room = Bedroom 2")
+        LOCATION = "BEDROOM2"
+    elif not(swRoomBEDROOM3.value):
+        print("Room = Bedroom 3")
+        LOCATION = "BEDROOM3"
+    elif not(swRoomOUTSIDE.value):
+        print("Room = Outside")
+        LOCATION = "OUTSIDE"
+    else:
+        print("Room = ERROR")
+        LOCATION = "ERROR"
+
     #append the data in the spreadsheet, including a timestamp
     try:
         worksheet.append_row((datetime.datetime.now().isoformat(), LOCATION, scd.CO2, aqdata["pm25 standard"], scd.temperature, scd.relative_humidity))
