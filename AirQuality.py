@@ -114,6 +114,12 @@ print("Found PM2.5 sensor")
 scd = adafruit_scd30.SCD30(i2c)  #to do: Look into reset pin
 print("Found SCD30 sensor")
 
+#SDC30 Forced Outdoor Calibration (NOTE: Unit must be outside when performing this!)
+#print("Calibrating SDC30 Sensor at 400ppm...")
+#time.sleep(300)
+#scd.forced_recalibration_reference = 400
+#print("Calibration Complete")
+
 #main - To do: look into using background processes for sending data etc
 #time.sleep(10)
 print('Logging sensor measurements to\ {0} every {1} seconds.'.format(GDOCS_SPREADSHEET_NAME, FREQUENCY_SECONDS))
