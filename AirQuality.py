@@ -16,7 +16,7 @@ from adafruit_ht16k33.segments import BigSeg7x4
 
 LOCATION = 'NONE'
 
-FREQUENCY_SECONDS = 10
+FREQUENCY_SECONDS = 60
 
 # ----------------- MQTT CONFIG -----------------
 MQTT_BROKER = "192.168.86.16"   # <-- Change to your HA broker IP
