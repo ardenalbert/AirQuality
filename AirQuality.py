@@ -19,10 +19,10 @@ LOCATION = 'NONE'
 FREQUENCY_SECONDS = 60
 
 # ----------------- MQTT CONFIG -----------------
-MQTT_BROKER = "192.168.86.16"   # <-- Change to your HA broker IP
+MQTT_BROKER = "192.168.86.16"   # <-- HA broker IP
 MQTT_PORT = 1883
-MQTT_USER = "mqtt_user"         # <-- Change to your HA MQTT user
-MQTT_PASSWORD = "mqtt_password" # <-- Change to your HA MQTT password
+MQTT_USER = "mqtt_user"         # <-- HA MQTT user
+MQTT_PASSWORD = "mqtt_password" # <-- HA MQTT password
 MQTT_TOPIC_PREFIX = "home/airquality"
 
 # Connect to MQTT broker
@@ -107,6 +107,13 @@ scd.temperature_offset = 3.1
 #--- Display current temperature reading offset ---
 current_offset = scd.temperature_offset
 print(f"Current temperature offset: {current_offset} degrees C")
+
+#SDC30 Forced Outdoor Calibration (NOTE: Unit must be outside when performing this!)
+#print("Calibrating SDC30 Sensor at 400ppm...")
+#time.sleep(300)
+#scd.forced_recalibration_reference = 400
+#print("Calibration Complete")
+
 print('Press Ctrl-C to quit.')
 while True:
     try:
