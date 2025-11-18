@@ -19,7 +19,7 @@ LOCATION = 'NONE'
 FREQUENCY_SECONDS = 60
 
 # ----------------- MQTT CONFIG -----------------
-MQTT_BROKER = "192.168.86.16"   # <-- HA broker IP
+MQTT_BROKER = "192.168.86.100"   # <-- HA broker IP
 MQTT_PORT = 1883
 MQTT_USER = "mqtt_user"         # <-- HA MQTT user
 MQTT_PASSWORD = "mqtt_password" # <-- HA MQTT password
@@ -93,6 +93,7 @@ time.sleep(1)
 # 7-segment display test
 display = BigSeg7x4(i2c)
 display.fill(0)
+display.brightness = 0.5
 display.print("8888")
 time.sleep(3)
 display.fill(0)
@@ -110,9 +111,13 @@ print(f"Current temperature offset: {current_offset} degrees C")
 
 #SDC30 Forced Outdoor Calibration (NOTE: Unit must be outside when performing this!)
 #print("Calibrating SDC30 Sensor at 400ppm...")
-#time.sleep(300)
+#time.sleep(120) #Sensor must stabilize at 400ppm for 2 min prior to calibration
 #scd.forced_recalibration_reference = 400
 #print("Calibration Complete")
+
+#Set Calibration mode to ASC (auto); requires sensor to be exposed to 400ppm periodically (fresh air)
+#scd.self_calibration_enabled = True
+#print('Calibration Mode = ASC')
 
 print('Press Ctrl-C to quit.')
 while True:
